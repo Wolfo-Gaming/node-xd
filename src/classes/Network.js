@@ -41,7 +41,7 @@ class Network {
     async fetchNetworkForwards() {
         var data = await this.client.get("/1.0/networks/" + this.bridge + "/forwards")
         var res = []
-        for (var forward of data.metadata) {
+        if (data.metadata != null) for (var forward of data.metadata) {
            res.push((await this.client.get(forward)).metadata)
         }
         return res;
