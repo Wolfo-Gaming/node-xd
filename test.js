@@ -5,7 +5,8 @@ const rc = new (require("./src/classes/Client"))(
 );
 
 	async function start() {
-        var res = await rc.client.get('/1.0/metrics')
-		console.log(res)
+       var controller = rc.network('lxdbr0')
+	   var s = await controller.fetchNetworkForwards()
+	  console.log(s)
 	}
 	start()

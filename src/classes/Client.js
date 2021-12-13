@@ -68,7 +68,10 @@ class Client {
       resolve(await this.instance(data.name))
     })
   }
-
+  network(bridge) {
+     const network = require('./Network')
+     return new network(bridge, this.client)
+  }
   /**
    * Gets a single instance
    * @param {string} name 

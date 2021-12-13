@@ -4,5 +4,28 @@
     "express": "^4.17.1",
     "express-ws": "^5.0.2",
     "ws": "^8.3.0"
-  }
+  },
+  "name": "node-xd",
+  "version": "1.0.0",
+  "description": "Node LXD Client",
+  "main": "src/classes/Client.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Wolfo-Gaming/node-xd.git"
+  },
+  "keywords": [
+    "LXD",
+    "LXD",
+    "Client"
+  ],
+  "author": "wolfogaming",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Wolfo-Gaming/node-xd/issues"
+  },
+  "homepage": "https://github.com/Wolfo-Gaming/node-xd#readme"
 }

@@ -25,6 +25,12 @@ class RequestClient {
       this.client.put(url, data).catch(reject).then(({data}) => resolve(data))
     })
   }
+  patch(url, data) {
+    this.requests++;
+    return new Promise((resolve, reject) => {
+      this.client.patch(url, data).catch(reject).then(({data}) => resolve(data))
+    })
+  }
   /**
    * 
    * @param {string} url 
