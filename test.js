@@ -5,6 +5,8 @@ const rc = new (require("./src/classes/Client"))(
 );
 
 	async function start() {
+		var e = await rc.createBridge("lxdbr1")
+		console.log(e)
        var controller = rc.network('lxdbr0')
 	   var s = await controller.fetchNetworkForwards()
 	  console.log(s)

@@ -14,7 +14,7 @@ class Network {
             "ports": ports
         }
         console.log(`/1.0/networks/${this.bridge}/forwards`)
-        var res = await this.client.post('/1.0/networks/'+this.bridge +'/forwards', data)
+        var res = await this.client.post('/1.0/networks/' + this.bridge + '/forwards', data)
         return res;
     }
     /**
@@ -27,36 +27,36 @@ class Network {
         if (!ports) throw new Error('Ports not specified');
         let all_ports = []
         all_ports.concat(ports)
-        var existing_ports = await this.client.get("/1.0/networks/"+this.bridge+"/forwards/"+listen_address)
+        var existing_ports = await this.client.get("/1.0/networks/" + this.bridge + "/forwards/" + listen_address)
         all_ports = ports.concat(existing_ports.metadata.ports)
-        var res = await this.client.patch('/1.0/networks/'+this.bridge+'/forwards/'+listen_address , {
+        var res = await this.client.patch('/1.0/networks/' + this.bridge + '/forwards/' + listen_address, {
             "ports": all_ports
         })
         return res;
     }
     async fetchNetworkForward(listen_address) {
-        var data = await this.client.get("/1.0/networks/"+this.bridge+"/forwards/" + listen_address)
+        var data = await this.client.get("/1.0/networks/" + this.bridge + "/forwards/" + listen_address)
         return data.metadata
     }
     async fetchNetworkForwards() {
         var data = await this.client.get("/1.0/networks/" + this.bridge + "/forwards")
         var res = []
         if (data.metadata != null) for (var forward of data.metadata) {
-           res.push((await this.client.get(forward)).metadata)
+            res.push((await this.client.get(forward)).metadata)
         }
         return res;
     }
-        constructor(bridge, rootClient) {
-            /**
-             * @private
-             * @type {import('../lib/RequestClient')}
-             */
-            this.client = rootClient;
-            /**
-             * @private
-             * @type {string}
-             */
-            this.bridge = bridge
-        }
+    constructor(bridge, rootClient) {
+        /**
+         * @private
+         * @type {import('../lib/RequestClient')}
+         */
+        this.client = rootClient;
+        /**
+         * @private
+         * @type {string}
+         */
+        this.bridge = bridge
     }
+}
 module.exports = Network;

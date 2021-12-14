@@ -72,6 +72,22 @@ class Client {
      const network = require('./Network')
      return new network(bridge, this.client)
   }
+  createBridge(name, config, description) {
+    return new Promise(async (resolve, reject) => {
+      var data = {
+        name: name,
+        type: "bridge",
+        description: description ? description : "",
+        config: config ? config : {}
+      }
+      try {
+        var res = await this.client.post('/1.0/networks', data)
+      } catch (error) {
+        reject(error)
+      }
+      resolve(this.network(name))
+    })
+  }
   /**
    * Gets a single instance
    * @param {string} name 
