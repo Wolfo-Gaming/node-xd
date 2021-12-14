@@ -1,11 +1,21 @@
 class Network {
     async updateNetworkConfig(config) {
-        var existing = await this.client.get('/1.0/networks/' + this.bridge)
-        var newConfig = {...existing.metadata.config, ...config}
-        var res = await this.client.patch('/1.0/networks/'+ this.bridge, {
-            config: newConfig
+        return new Promise(async (resolve, reject) => {
+            try {
+                var existing = await this.client.get('/1.0/networks/' + this.bridge)
+            } catch (error) {
+                reject(error)
+            }
+            var newConfig = { ...existing.metadata.config, ...config }
+            try {
+                var res = await this.client.patch('/1.0/networks/' + this.bridge, {
+                    config: newConfig
+                })
+            } catch (error) {
+                reject(error)
+            }
+            resolve(res)
         })
-        return res;
     }
 
     /**
