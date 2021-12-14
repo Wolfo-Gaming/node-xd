@@ -48,13 +48,13 @@ class Client {
       try {
         var res = await this.client.post('/1.0/instances', data)
       } catch (error) {
-        reject(error)
+        return reject(error)
       }
       if (res.data.type == "error") {
-        reject(res.data)
+        return reject(res.data)
       }
-      await awaitOperation(this, res.data.metadata.id)
-      resolve(await this.instance(data.name))
+      //
+      return resolve(await res.data)
     })
   }
   network(bridge) {
