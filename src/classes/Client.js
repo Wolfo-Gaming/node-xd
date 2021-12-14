@@ -50,6 +50,9 @@ class Client {
       } catch (error) {
         reject(error)
       }
+      if (res.data.type == "error") {
+        reject(res.data)
+      }
       await awaitOperation(this, res.data.metadata.id)
       resolve(await this.instance(data.name))
     })
