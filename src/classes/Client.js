@@ -46,21 +46,7 @@ class Client {
   async create(data) {
     return new Promise(async (resolve, reject) => {
       try {
-        var res = await this.client.post('/1.0/instances', {
-          "architecture": "x86_64",
-          "config": data.config ? data.config : {
-            "security.nesting": "true"
-          },
-          "empheral": false,
-          "name": data.name,
-          "profiles": data.profiles ? data.profiles : [
-            "default"
-          ],
-          "source": data.source ? data.source : {
-            'type': 'image',
-            'fingerprint': 'd1b447d815ff'
-          }
-        })
+        var res = await this.client.post('/1.0/instances', data)
       } catch (error) {
         reject(error)
       }
