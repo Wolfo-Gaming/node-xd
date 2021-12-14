@@ -6,7 +6,7 @@
     "ws": "^8.3.0"
   },
   "name": "node-xd",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Node LXD Client",
   "main": "src/classes/Client.js",
   "devDependencies": {},
