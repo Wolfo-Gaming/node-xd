@@ -6,6 +6,7 @@ class Network {
             } catch (error) {
                 reject(error)
             }
+            if (existing.metadata.config == null) existing.metadata.config = {};
             var newConfig = { ...existing.metadata.config, ...config }
             try {
                 var res = await this.client.patch('/1.0/networks/' + this.bridge, {
