@@ -1,4 +1,13 @@
 class Network {
+    async updateNetworkConfig(config) {
+        var existing = await this.client.get('/1.0/networks/' + this.bridge)
+        var newConfig = {...existing.metadata.config, ...config}
+        var res = await this.client.patch('/1.0/networks/'+ this.bridge, {
+            config: newConfig
+        })
+        return res;
+    }
+
     /**
      * Creates Port forward on bridge
      * @param {string} listen_address
