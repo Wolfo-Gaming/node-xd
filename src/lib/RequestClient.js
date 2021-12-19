@@ -73,6 +73,7 @@ class RequestClient {
         return new ws.WebSocket("wss://" + type.host + url, {
           cert: optionalTrust.cert,
           key: optionalTrust.key,
+          rejectUnauthorized: false
         });
       };
     }
