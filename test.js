@@ -1,28 +1,22 @@
 
-
-const xd = new (require("./src/classes/Client"))(
-	"unix:///var/snap/lxd/common/lxd/unix.socket"
-);
+const fs = require('fs')
+const xd = new (require("./src/classes/Client"))("https://81.205.168.8:8443/", {
+	cert: fs.readFileSync('./lxd-webui.crt'),
+	key: fs.readFileSync('./lxd-webui.key')
+});
 
 async function start() {
-	const ws = await xd.events("operation")
-	ws.on('message', (data) => {
-		console.log(data.toString())
+
+	var instance = await xd.instance('test')
+	/**
+	 * @type {import('ws').WebSocket}
+	 */
+	var e = await instance.exec("java -jar server.jar".split(' '), {interactive:true})
+    e.on('message', d => console.log(d.toString()))
+	e.on("close", () => {
+		console.log("IT IS CLOSED!!!")
+		process.exit(0)
 	})
-	try {
-		var e = await xd.create({
-			"name": "test",
-			"source": {
-				"alias": "ubuntu/20.04",
-				"type": "image",
-				"mode": "pull",
-				"server": "https://images.linuxcontainers.org",
-				"protocol": "simplestreams"
-			}
-		})	
-	} catch (error) {
-		console.log(error)
-	}
-	console.log(e)
+	process.stdin.on('data', (data) => e.send(data, {binary:true}))
 }
 start()

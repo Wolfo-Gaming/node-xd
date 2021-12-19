@@ -33,6 +33,19 @@ class Instance {
 	type() {
 		return this._metadata.meta.type;
 	}
+	/**
+	 * Returns instances IP on bridge
+	 * @param {"ipv4"|"ipv6"} family
+	 * @returns {Promise<string>}
+	 */
+	async ip(family) {
+		var data = await this.client.get("/1.0/instances/" + this._name + "/state")
+		if (family == "ipv4") {
+			return data.metadata.network.eth0.addresses.find(val => val.family == "inet").address
+		} else if (family == "ipv6") {
+			return data.metadata.network.eth0.addresses.find(val => val.family == "inet6").address
+		}
+	}
 	async stop(force) {
 		return new Promise(async (resolve, reject) => {
 			try {
@@ -61,36 +74,53 @@ class Instance {
 	 * @param {{}?} options.env
 	 * @param {string?} options.cwd
 	 * @param {number?} options.user
-	 * @returns 
+	 * @param {boolean?} options.interactive
+	 * @returns {import('ws').WebSocket | string}
 	 */
 	exec(command, options) {
-		return new Promise(async (resolve,reject) => {
-		 try {
-			 var data = await this.client.post("/1.0/instances/" + this._name + "/exec", {
-				"command": command,
-				"environment": options.env ? options.env : {},
-				"interactive": false,
-				"wait-for-websocket": true,
+		if (!options) var options = {}
+		return new Promise(async (resolve, reject) => {
+			try {
+				var data = await this.client.post("/1.0/instances/" + this._name + "/exec", {
+					"command": command,
+					"environment": options.env ? options.env : {},
+					"interactive": true,
+					"wait-for-websocket": true,
 
-			  })
-			  console.log(JSON.stringify(data.data))
-			  var r = await this.client.ws(
-				data.data.operation +
+				})
+				var r = await this.client.ws(
+					data.data.operation +
 					"/websocket?secret=" +
-					data.data.metadata.metadata.fds["1"]
-			)
-			var output = ''
-			r.on('message', (data) => {
-				console.log(data.toString())
-				output += data.toString() + '\n'
-			})
-			r.on('close', () => {
-				console.log('close')
-              resolve(output)
-			})
-		 } catch (error) {
-			 reject(error)
-		 }
+					data.data.metadata.metadata.fds["0"]
+				)
+				//await awaitOperation(this.rootClient, data.data.metadata.id)
+				if (options.interactive == true) {
+					r.on('message', (d) => {
+						if (d == "") {
+							r.close()
+						}
+					})
+					resolve(r)
+				} else {
+					var str = ""
+					function exit() {
+						r.close()
+						resolve(str)
+					}
+					r.on("message", async (d) => {
+	
+						if (d == "") {
+							exit()
+						} else {
+							str += d + '\n'
+						}
+					})
+				}
+				
+
+			} catch (error) {
+				reject(error)
+			}
 		})
 	}
 	async start(force) {
@@ -142,8 +172,8 @@ class Instance {
 								"height": 24,
 								"type": "console",
 								"width": 80
-							  })
-							  // use console endpoint instead of exec, both work
+							})
+							// use console endpoint instead of exec, both work
 
 						} else if (options.endpoint == "exec") {
 							var data = await this.client.post(
@@ -163,8 +193,8 @@ class Instance {
 								"height": 24,
 								"type": "console",
 								"width": 80
-							  })
-							  // 
+							})
+							// 
 						}
 
 						break;
@@ -176,8 +206,8 @@ class Instance {
 				console.log(JSON.stringify(data.data));
 				var r = await this.client.ws(
 					data.data.operation +
-						"/websocket?secret=" +
-						data.data.metadata.metadata.fds["0"]
+					"/websocket?secret=" +
+					data.data.metadata.metadata.fds["0"]
 				)
 				/**
 				 * 
@@ -186,20 +216,20 @@ class Instance {
 				 * @returns {{send: <Function(command:string)>}}
 				 */
 				var proxy = (ws) => {
-                    ws.on('message', (data) => {
-						r.send(data, {binary:true})
+					ws.on('message', (data) => {
+						r.send(data, { binary: true })
 					})
 					r.on('message', (data) => {
-						ws.send(data, {binary: true})
+						ws.send(data, { binary: true })
 					})
 					return {
-						send: function(command) {
-							r.send(command + '\n', {binary:true})
+						send: function (command) {
+							r.send(command + '\n', { binary: true })
 						}
 					};
 				}
 				resolve(
-					{proxy: proxy, operation: r}
+					{ proxy: proxy, operation: r }
 				);
 			} catch (error) {
 				reject(error);
@@ -211,7 +241,7 @@ class Instance {
 			try {
 				var res = await this.client.delete('/1.0/instances/' + this._name)
 				console.log(res)
-			    await awaitOperation(this.rootClient, res.data.metadata.id)
+				await awaitOperation(this.rootClient, res.data.metadata.id)
 			} catch (error) {
 				reject(error)
 			}
@@ -233,23 +263,23 @@ class Instance {
 					"instance_only": false,
 					"name": name,
 					"optimized_storage": true
-				  })
-				  var s = new (require('events')).EventEmitter
-				  var eventsws = await this.client.ws('/1.0/events?type=operation')
-				  eventsws.on('message', (datam) => {
+				})
+				var s = new (require('events')).EventEmitter
+				var eventsws = await this.client.ws('/1.0/events?type=operation')
+				eventsws.on('message', (datam) => {
 					var datap = JSON.parse(datam.toString());
-			        if (datap.metadata.id == res.data.metadata.id)
+					if (datap.metadata.id == res.data.metadata.id)
 						s.emit('finish', datap)
-				
-				  })
-	
-				 resolve(s)
+
+				})
+
+				resolve(s)
 			} catch (error) {
 				reject(error)
 			}
 		})
-		
-		
+
+
 	}
 	/**
 	 *
@@ -281,7 +311,7 @@ class Instance {
 	 * @param {import('./Client')} self
 	 */
 	constructor(self, data) {
-		
+
 		/**
 		 * @private
 		 */
