@@ -39,12 +39,22 @@ class Instance {
 	 * @returns {Promise<string>}
 	 */
 	async ip(family) {
-		var data = await this.client.get("/1.0/instances/" + this._name + "/state")
-		if (family == "ipv4") {
-			return data.metadata.network.eth0.addresses.find(val => val.family == "inet").address
-		} else if (family == "ipv6") {
-			return data.metadata.network.eth0.addresses.find(val => val.family == "inet6").address
-		}
+		return new Promise(async (resolve, reject) => {
+			try {
+				var data = await this.client.get("/1.0/instances/" + this._name + "/state")
+				if (!family) {
+					resolve(data.metadata.network.eth0.addresses.find(val => val.family == "inet").address)
+				} else if (family == "ipv4") {
+					resolve(data.metadata.network.eth0.addresses.find(val => val.family == "inet").address)
+				} else if (family == "ipv6") {
+					resolve(data.metadata.network.eth0.addresses.find(val => val.family == "inet6").address)
+				}
+			} catch (error) {
+				reject(error)
+			}
+		})
+
+
 	}
 	async stop(force) {
 		return new Promise(async (resolve, reject) => {
@@ -69,21 +79,21 @@ class Instance {
 	}
 	/**
 	 * 
-	 * @param {string[]} command 
+	 * @param {string} command 
 	 * @param {object} options
 	 * @param {{}?} options.env
 	 * @param {string?} options.cwd
 	 * @param {number?} options.user
 	 * @param {boolean?} options.interactive
-	 * @returns {import('ws').WebSocket | string}
+	 * @returns {Promise<import('ws').WebSocket | string>}
 	 */
 	exec(command, options) {
 		if (!options) var options = {}
 		return new Promise(async (resolve, reject) => {
 			try {
 				var data = await this.client.post("/1.0/instances/" + this._name + "/exec", {
-					"command": command,
-					"environment": options.env ? options.env : {},
+					"command": command.split(' '),
+					"environment": options.env ? options.env : { TERM: "linux" },
 					"interactive": true,
 					"wait-for-websocket": true,
 
@@ -108,15 +118,15 @@ class Instance {
 						resolve(str)
 					}
 					r.on("message", async (d) => {
-	
+
 						if (d == "") {
 							exit()
 						} else {
-							str += d + '\n'
+							str += d
 						}
 					})
 				}
-				
+
 
 			} catch (error) {
 				reject(error)

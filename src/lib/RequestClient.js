@@ -66,6 +66,9 @@ class RequestClient {
         rejectUnauthorized: false,
       });
       this.client = axios.default.create({
+        headers: {
+          Accept: "application/json"
+        },
         httpsAgent: httpsClient,
         baseURL: url,
       });

@@ -1,3 +1,5 @@
+import Instance from "../classes/Instance";
+
 export namespace Info {
 
     export interface Config {
@@ -180,7 +182,7 @@ export namespace InstanceData {
 
 }
 export namespace CreateInstance {
-    
+
     export interface Config {
         "security.nesting": string;
     }
@@ -234,10 +236,8 @@ export namespace CreateInstance {
         devices: Devices;
         ephemeral: boolean;
         instance_type: string;
-        name: string;
         profiles: string[];
         restore: string;
-        source: Source;
         stateful: boolean;
         type: string;
     }
@@ -485,6 +485,60 @@ export namespace Resources {
     }
 
 }
-
-
+import { EventEmitter } from "events";
+export interface CreateEmitter extends EventEmitter {
+    on(event: "finished", c: (Instance: Instance) => void)
+    on(event: "progress", c: (progress: number) => void)
+    on(event: "error", c: (error: string) => void)
+}
+export interface BridgeConfig {
+    "bgp.ipv4.nexthop": string,
+    "bgp.ipv6.nexthop": string,
+    "bridge.driver": string,
+    "bridge.external_interfaces": string,
+    "bridge.hwaddr": string,
+    "bridge.mode": string,
+    "bridge.mtu": number,
+    "dns.domain": string,
+    "dns.mode": string,
+    "dns.search": string,
+    "dns.zone.forward": string,
+    "dns.zone.reverse.ipv4": string,
+    "dns.zone.reverse.ipv6": string,
+    "fan.overlay_subnet": string,
+    "fan.type": string,
+    "fan.underlay_subnet": string,
+    "ipv4.dhcp": boolean,
+    "ipv4.dhcp.expiry": string,
+    "ipv4.dhcp.gateway": string,
+    "ipv4.address": string,
+    "ipv4.dhcp.ranges": string,
+    "ipv4.firewall": boolean,
+    "ipv4.nat.address": string,
+    "ipv4.nat": boolean,
+    "ipv4.nat.order": string,
+    "ipv4.ovn.ranges": string,
+    "ipv4.routes": string,
+    "ipv4.routing": boolean,
+    "ipv6.address": string,
+    "ipv6.dhcp": boolean,
+    "ipv6.dhcp.expiry": string,
+    "ipv6.dhcp.ranges": string,
+    "ipv6.dhcp.stateful": boolean,
+    "ipv6.firewall": boolean,
+    "ipv6.nat.address": string,
+    "ipv6.nat": boolean,
+    "ipv6.nat.order": string,
+    "ipv6.ovn.ranges": string,
+    "ipv6.routes": string,
+    "ipv6.routing": boolean,
+    "maas.subnet.ipv4": string,
+    "maas.subnet.ipv6": string,
+    "raw.dnsmasq": string,
+    "security.acls": string,
+    "security.acls.default.ingress.action": string,
+    "security.acls.default.egress.action": string,
+    "security.acls.default.ingress.logged": boolean,
+    "security.acls.default.egress.logged": boolean
+}
 
