@@ -44,6 +44,35 @@ class Client {
       resolve(data.metadata)
     })
   }
+  async usage() {
+    return new Promise(async (resolve, reject) => {
+      var instances = await this.instances()
+      var systemCPU = 0
+      var systemRAMPercent = 0
+      var systemRAM = 0
+      var instancesUsage = await Promise.all(instances.map(async instance => {
+        var usage = await instance.resources(true)
+        systemCPU += usage.cpu
+        systemRAMPercent += usage.memory.percent
+        systemRAM += usage.memory.usage
+        return {
+          type: instance.type(),
+          name: instance.name(),
+          usage: usage
+        }
+      }))
+      resolve({
+        system: {
+          memory: {
+            percent: systemRAMPercent,
+            usage: systemRAM
+          },
+          cpu: systemCPU
+        },
+        instances: instancesUsage
+      })
+    })
+  }
   /**
    * Gets all available images
    * @param {string?} os OS to filter
@@ -298,6 +327,10 @@ class Client {
        * @private
        */
       this.client = new RequestClient(url, options)
+      this.cert = options.cert
+      this.key = options.key
+      this.host = url
+      this.connectionType = 'http'
       /**
        * @private
        */
@@ -307,6 +340,8 @@ class Client {
       * @private
       */
       this.client = new RequestClient(url)
+      this.connectionType = 'unix'
+      this.unixpath = url
       /**
        * @private
        */

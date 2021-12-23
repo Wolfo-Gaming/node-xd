@@ -7,10 +7,12 @@ class RequestClient {
     this.requests++;
     return (await this.client.get(url)).data
   }
-  post(url, data) {
+  post(url, data, headers) {
     this.requests++;
     return new Promise((resolve, reject) => {
-      this.client.post(url, data).catch(reject).then((data) => resolve(data))
+      this.client.post(url, data, headers).catch(err => {
+        console.log(err)
+      }).then((data) => {resolve(data)})
     })
   }
   delete(url) {
@@ -30,6 +32,9 @@ class RequestClient {
     return new Promise((resolve, reject) => {
       this.client.patch(url, data).catch(reject).then(({data}) => resolve(data))
     })
+  }
+  axios(...args) {
+    return this.client(...args)
   }
   /**
    * 
@@ -66,11 +71,10 @@ class RequestClient {
         rejectUnauthorized: false,
       });
       this.client = axios.default.create({
-        headers: {
-          Accept: "application/json"
-        },
         httpsAgent: httpsClient,
         baseURL: url,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
       });
       this.wsConnect = (url) => {
         return new ws.WebSocket("wss://" + type.host + url, {

@@ -1,6 +1,12 @@
-const { EventEmitter } = require("stream");
+const { match } = require("assert");
+const { EventEmitter } = require("events");
 const awaitOperation = require("../lib/awaitOperation");
-
+var fs = require('fs')
+function sleep(ms) {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
 class Instance {
 	/**
 	 * @returns {string}
@@ -33,6 +39,119 @@ class Instance {
 	type() {
 		return this._metadata.meta.type;
 	}
+/**
+ * 
+ * @param {string} path 
+ * @param {fs.WriteStream} writeStream 
+ */
+	download(path, writeStream) {
+		return new Promise(async (resolve, reject) => {
+			if (!path) throw new Error('Path not defined')
+			var events = new EventEmitter()
+			const url = encodeURI("/1.0/instances/" + this._name + "/files?path=" + path)
+			const { data, headers } = await this.client.axios({
+				url,
+				method: 'GET',
+				responseType: 'stream'
+			})
+			events.emit('open')
+			const totalLength = headers['content-length']
+			var done = 0
+			if (data.headers["content-type"] == "application/json") {
+				data.on('data', (chunk) => {
+					resolve({
+						type: 'dir',
+						list: JSON.parse(chunk.toString()).metadata
+					})
+				})
+
+			} else {
+				data.on('data', (chunk) => {
+					done += chunk.length;
+					var percent = (done * 100) / parseFloat(totalLength)
+					var progress = {
+						bytes: {
+							sent: done,
+							total: parseFloat(totalLength)
+						},
+						percent: percent
+					}
+					events.emit('progress', progress)
+					if (progress.percent == 100) {
+						events.emit('finish')
+					}
+				})
+				data.pipe(writeStream)
+				resolve({ type: 'file', events })
+			}
+		})
+
+
+	}
+    /**
+	 * Upload file to instance
+	 * @param {fs.ReadStream} ReadStream 
+	 * @param {string} destPath 
+	 * @returns {EventEmitter}
+	 */
+	upload(ReadStream, destPath) {
+		return new Promise(async (resolve, reject) => {
+			var events = new EventEmitter()
+			var https = require('https')
+			var parsedURL = new URL(this.rootClient.host)
+			if (this.rootClient.connectionType == "unix") {
+				var opts = {
+					rejectUnauthorized: false,
+					method: "POST",
+					socketPath: this.rootClient.unixpath,
+					path: encodeURI("/1.0/instances/" + this._name + "/files?path=" + destPath),
+					headers: {
+						"Content-Type": `application/octet-stream`
+					},
+				}
+			} else if (this.rootClient.connectionType == "http") {
+				var opts = {
+					cert: this.rootClient.cert,
+					key: this.rootClient.key,
+					rejectUnauthorized: false,
+					method: "POST",
+					hostname: parsedURL.hostname,
+					port: parsedURL.port,
+					path: encodeURI("/1.0/instances/" + this._name + "/files?path=" + destPath),
+					headers: {
+						"Content-Type": `application/octet-stream`
+					},
+				}
+			}
+			var request = https.request(opts, function (response) {
+				response.on('error', (err) => {
+					reject(err)
+				})
+			});
+			request.on('error', error => {
+				reject(error)
+			})
+			var bytes = 0
+			var size = fs.lstatSync(ReadStream.path).size;
+			ReadStream.on('data', (chunk) => {
+				bytes += chunk.length;
+				var percent = ((bytes) * 100) / size
+				var data = {
+					bytes: {
+						sent: bytes,
+						total: size
+					},
+					percent: percent
+				}
+				events.emit('progress', data)
+				if (data.percent == 100) {
+					events.emit("finish")
+				}
+			}).pipe(request)
+			resolve(events)
+		})
+
+	}
 	/**
 	 * Returns instances IP on bridge
 	 * @param {"ipv4"|"ipv6"} family
@@ -53,8 +172,6 @@ class Instance {
 				reject(error)
 			}
 		})
-
-
 	}
 	async stop(force) {
 		return new Promise(async (resolve, reject) => {
@@ -118,7 +235,6 @@ class Instance {
 						resolve(str)
 					}
 					r.on("message", async (d) => {
-
 						if (d == "") {
 							exit()
 						} else {
@@ -126,12 +242,44 @@ class Instance {
 						}
 					})
 				}
-
-
 			} catch (error) {
 				reject(error)
 			}
 		})
+	}
+	async resources(system) {
+		return new Promise(async (resolve, reject) => {
+			var state = await this.client.get("/1.0/instances/" + this._name + "/state")
+			var os = require('os')
+			if (system == true) {
+				var cpuCount = os.cpus().length
+			} else {
+				var s = (await this.client.get("/1.0/instances/" + this._name)).metadata.config["limits.cpu"]
+				var cpuCount = s ? s : os.cpus().length; // thats probs why i did / 2
+			}
+			var multiplier = 100000 / cpuCount
+			var startTime = Date.now()
+			var usage1 = ((await this.client.get("/1.0/instances/" + this._name + "/state")).metadata.cpu.usage / 1000000000)
+			await sleep(1000);
+			var usage2 = ((await this.client.get("/1.0/instances/" + this._name + "/state")).metadata.cpu.usage / 1000000000)
+			var cpu_usage = ((usage2 - usage1) / (Date.now() - startTime)) * multiplier
+			if (cpu_usage > 100) {
+				cpu_usage = 100;
+			}
+			resolve({
+				cpu: (cpu_usage),
+				swap: {
+					usage: (state.metadata.memory.swap_usage * 0.00000095367432)
+				},
+				memory: {
+					usage: (state.metadata.memory.usage),
+					percent: (((state.metadata.memory.usage / os.totalmem()) * 100))
+				}
+			})
+
+
+		})
+
 	}
 	async start(force) {
 		return new Promise(async (resolve, reject) => {
@@ -174,7 +322,6 @@ class Instance {
 								width: 0,
 							}
 						);
-
 						break;
 					case "console":
 						if (options.endpoint == "console") {
@@ -184,7 +331,6 @@ class Instance {
 								"width": 80
 							})
 							// use console endpoint instead of exec, both work
-
 						} else if (options.endpoint == "exec") {
 							var data = await this.client.post(
 								"/1.0/instances/" + this._name + "/exec",
@@ -206,18 +352,20 @@ class Instance {
 							})
 							// 
 						}
-
 						break;
-
 					default:
 						break;
 				}
-
-				console.log(JSON.stringify(data.data));
+				//console.log(JSON.stringify(data.data));
 				var r = await this.client.ws(
 					data.data.operation +
 					"/websocket?secret=" +
 					data.data.metadata.metadata.fds["0"]
+				)
+				var ctrl = await this.client.ws(
+					data.data.operation +
+					"/websocket?secret=" +
+					data.data.metadata.metadata.fds["control"]
 				)
 				/**
 				 * 
@@ -225,21 +373,54 @@ class Instance {
 				 * @param {function(ws)} auth
 				 * @returns {{send: <Function(command:string)>}}
 				 */
+				var proxyctrl = (ws) => {
+					ws.on('message', (data) => {
+						ctrl.send(data, { binary: true })
+					})
+					var s = (data) => {
+						ws.send(data, { binary: true })
+					}
+					ctrl.on('message', s)
+					return {
+						send: function (command) {
+							ws.send(command + '\n', { binary: true })
+						},
+						close: function () {
+
+							ctrl.removeAllListeners("message")
+							ws.close()
+						},
+						removeAllListeners: function () {
+
+							ctrl.removeAllListeners("message")
+						},
+					};
+				}
 				var proxy = (ws) => {
 					ws.on('message', (data) => {
 						r.send(data, { binary: true })
 					})
-					r.on('message', (data) => {
+					var s = (data) => {
 						ws.send(data, { binary: true })
-					})
+					}
+					r.on('message', s)
 					return {
 						send: function (command) {
-							r.send(command + '\n', { binary: true })
-						}
+							ws.send(command + '\n', { binary: true })
+						},
+						close: function () {
+
+							r.removeAllListeners("message")
+							ws.close()
+						},
+						removeAllListeners: function () {
+
+							r.removeAllListeners("message")
+						},
 					};
 				}
 				resolve(
-					{ proxy: proxy, operation: r }
+					{ proxy: proxy, operation: r, control: ctrl, proxyctrl }
 				);
 			} catch (error) {
 				reject(error);
@@ -250,7 +431,6 @@ class Instance {
 		return new Promise(async (resolve, reject) => {
 			try {
 				var res = await this.client.delete('/1.0/instances/' + this._name)
-				console.log(res)
 				await awaitOperation(this.rootClient, res.data.metadata.id)
 			} catch (error) {
 				reject(error)
