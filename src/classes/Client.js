@@ -336,6 +336,7 @@ class Client {
        */
       this.imageServer = options.imageServer ? options.imageServer : null
     } else if (new URL(url).protocol == "unix:") {
+      if (!options) var options = {}
       /**
       * @private
       */
