@@ -51,7 +51,7 @@ class Client {
       var systemRAMPercent = 0
       var systemRAM = 0
       var instancesUsage = await Promise.all(instances.map(async instance => {
-        var usage = await instance.resources(true)
+        var usage = await instance.usage(true)
         systemCPU += usage.cpu
         systemRAMPercent += usage.memory.percent
         systemRAM += usage.memory.usage
@@ -334,7 +334,7 @@ class Client {
       /**
        * @private
        */
-      this.imageServer = options.imageServer
+      this.imageServer = options.imageServer ? options.imageServer : null
     } else if (new URL(url).protocol == "unix:") {
       /**
       * @private
@@ -345,7 +345,7 @@ class Client {
       /**
        * @private
        */
-      this.imageServer = options.imageServer
+      this.imageServer = options.imageServer ? options.imageServer : null
     } else {
       throw new Error('Invalid LXD URL, Must start with unix:// or https://')
     }

@@ -6,10 +6,8 @@ const xd = new (require("./src/classes/Client"))("https://81.205.168.8:8443/", {
 });
 
 async function start() {
-var inst = await xd.instance('test')
-var s = await inst.download('/root/s.txt', fs.createWriteStream('./s.txt'))
-s.events.on('progress', (s) => {
+	var inst = await xd.instance('test')
+	var s = await inst.usage()
 	console.log(s)
-})
 }
 start()

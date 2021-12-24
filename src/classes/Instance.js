@@ -247,35 +247,58 @@ class Instance {
 			}
 		})
 	}
-	async resources(system) {
+	async usage(system) {
 		return new Promise(async (resolve, reject) => {
 			var state = await this.client.get("/1.0/instances/" + this._name + "/state")
-			var os = require('os')
-			if (system == true) {
-				var cpuCount = os.cpus().length
-			} else {
-				var s = (await this.client.get("/1.0/instances/" + this._name)).metadata.config["limits.cpu"]
-				var cpuCount = s ? s : os.cpus().length; // thats probs why i did / 2
-			}
-			var multiplier = 100000 / cpuCount
-			var startTime = Date.now()
-			var usage1 = ((await this.client.get("/1.0/instances/" + this._name + "/state")).metadata.cpu.usage / 1000000000)
-			await sleep(1000);
-			var usage2 = ((await this.client.get("/1.0/instances/" + this._name + "/state")).metadata.cpu.usage / 1000000000)
-			var cpu_usage = ((usage2 - usage1) / (Date.now() - startTime)) * multiplier
-			if (cpu_usage > 100) {
-				cpu_usage = 100;
-			}
-			resolve({
-				cpu: (cpu_usage),
-				swap: {
-					usage: (state.metadata.memory.swap_usage * 0.00000095367432)
-				},
-				memory: {
-					usage: (state.metadata.memory.usage),
-					percent: (((state.metadata.memory.usage / os.totalmem()) * 100))
+			if (state.metadata.status == "Running") {
+
+				var os = require('os')
+				if (system == true) {
+					var cpuCount = os.cpus().length
+				} else {
+					var s = (await this.client.get("/1.0/instances/" + this._name)).metadata.config["limits.cpu"]
+					var cpuCount = s ? s : os.cpus().length; // thats probs why i did / 2
 				}
-			})
+				var multiplier = 100000 / cpuCount
+				var startTime = Date.now()
+				var usage1 = ((await this.client.get("/1.0/instances/" + this._name + "/state")).metadata.cpu.usage / 1000000000)
+				await sleep(1000);
+				var usage2 = ((await this.client.get("/1.0/instances/" + this._name + "/state")).metadata.cpu.usage / 1000000000)
+				var cpu_usage = ((usage2 - usage1) / (Date.now() - startTime)) * multiplier
+				if (cpu_usage > 100) {
+					cpu_usage = 100;
+				}
+				resolve({
+					state: state.metadata.status,
+					cpu: (cpu_usage),
+					swap: {
+						usage: (state.metadata.memory.swap_usage * 0.00000095367432)
+					},
+					memory: {
+						usage: (state.metadata.memory.usage),
+						percent: (((state.metadata.memory.usage / os.totalmem()) * 100))
+					},
+					disk: {
+						usage: state.metadata.disk.root.usage
+					}
+				})
+			 } else { 
+				resolve({
+					state: state.metadata.status,
+					cpu: 0,
+					swap: {
+						usage: 0
+					},
+					memory: {
+						usage: 0,
+						percent: 0
+					},
+					disk: {
+						usage: state.metadata.disk.root.usage
+					}
+				})
+			}
+
 
 
 		})
