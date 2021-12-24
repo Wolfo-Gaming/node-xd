@@ -6,8 +6,8 @@ const xd = new (require("./src/classes/Client"))("https://81.205.168.8:8443/", {
 });
 
 async function start() {
-	var inst = await xd.instance('test')
-	var s = await inst.usage()
+	var n = await xd.network('lxdbr0')
+	var s = await n.fetchNetworkForwards()
 	console.log(s)
 }
 start()
