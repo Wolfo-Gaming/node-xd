@@ -329,10 +329,11 @@ class Instance {
 	/**
 	 * Creates new console websocket (sending commands over text websocket must be sent as binary)
 	 * @param {"vga"|"console"} type
-	 * @param {{endpoint: "exec" | "console", command: string[], env: {}}} options
-	 * @returns {Promise<{operation: WebSocket, proxy: function(WebSocket): {send: function(string)}}>}
+	 * @param {{endpoint: "exec" | "console", command: string[], env: {},raw:{}}} options
+	 * @returns {Promise<{operation: WebSocket,control: WebSocket, proxy: function(WebSocket): {send: function(string), close: function(), removeAllListeners: function()}, proxyctrl: function(WebSocket): {send: function(string), close: function(), removeAllListeners: function()}}>}
 	 */
 	async console(type, options) {
+		if (!options.raw) options.raw = {}
 		return new Promise(async (resolve, reject) => {
 			try {
 				switch (type) {
@@ -343,6 +344,7 @@ class Instance {
 								height: 0,
 								type: "vga",
 								width: 0,
+								...options.raw
 							}
 						);
 						break;
@@ -351,7 +353,8 @@ class Instance {
 							var data = await this.client.post("/1.0/instances/" + this._name + "/console", {
 								"height": 24,
 								"type": "console",
-								"width": 80
+								"width": 80,
+								...options.raw
 							})
 							// use console endpoint instead of exec, both work
 						} else if (options.endpoint == "exec") {
@@ -365,13 +368,15 @@ class Instance {
 									},
 									interactive: true,
 									"wait-for-websocket": true,
+									...options.raw
 								}
 							);
 						} else {
 							var data = await this.client.post("/1.0/instances/" + this._name + "/console", {
 								"height": 24,
 								"type": "console",
-								"width": 80
+								"width": 80,
+								...options.raw
 							})
 							// 
 						}
@@ -379,17 +384,22 @@ class Instance {
 					default:
 						break;
 				}
-				//console.log(JSON.stringify(data.data));
-				var r = await this.client.ws(
-					data.data.operation +
-					"/websocket?secret=" +
-					data.data.metadata.metadata.fds["0"]
-				)
-				var ctrl = await this.client.ws(
-					data.data.operation +
-					"/websocket?secret=" +
-					data.data.metadata.metadata.fds["control"]
-				)
+				if (!data.data.operation || data.data.metadata.metadata.fds["0"] || data.data.metadata.metadata.fds["control"]) return reject(new Error('Operation failed to start'))
+				try {
+					var r = await this.client.ws(
+						data.data.operation +
+						"/websocket?secret=" +
+						data.data.metadata.metadata.fds["0"]
+					)
+					var ctrl = await this.client.ws(
+						data.data.operation +
+						"/websocket?secret=" +
+						data.data.metadata.metadata.fds["control"]
+					)
+				} catch (error) {
+					return reject(new Error('Failed to connect to operation'))
+				}
+
 				/**
 				 * 
 				 * @param {import('ws').WebSocket} ws 
@@ -409,13 +419,11 @@ class Instance {
 							ws.send(command + '\n', { binary: true })
 						},
 						close: function () {
-
-							ctrl.removeAllListeners("message")
+							ctrl.removeListener("message", s)
 							ws.close()
 						},
 						removeAllListeners: function () {
-
-							ctrl.removeAllListeners("message")
+							ctrl.removeListener("message", s)
 						},
 					};
 				}
@@ -432,13 +440,11 @@ class Instance {
 							ws.send(command + '\n', { binary: true })
 						},
 						close: function () {
-
-							r.removeAllListeners("message")
+							r.removeListener("message", s)
 							ws.close()
 						},
 						removeAllListeners: function () {
-
-							r.removeAllListeners("message")
+							r.removeListener("message", s)
 						},
 					};
 				}

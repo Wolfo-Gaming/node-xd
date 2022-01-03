@@ -33,8 +33,20 @@ class RequestClient {
       this.client.patch(url, data).catch(reject).then(({data}) => resolve(data))
     })
   }
-  axios(...args) {
-    return this.client(...args)
+  axios(args) {
+    if (this.prot == "unix") {
+      return this.client({
+        socketPath: this.socketPath,
+        ...args
+      })
+    } else {
+      return this.client({
+        baseURL:this.baseURL,
+        httpsAgent: this.agent,
+        ...args
+      })
+    }
+
   }
   /**
    * 
@@ -55,6 +67,8 @@ class RequestClient {
   constructor(url, optionalTrust) {
     var type = new URL(url);
     if (type.protocol == "unix:") {
+      this.socketPath = type.pathname
+      this.prot = 'unix'
       this.client = axios.default.create({
         validateStatus: false,
         socketPath: type.pathname,
@@ -65,11 +79,14 @@ class RequestClient {
         return s
       };
     } else if (type.protocol == "https:") {
+      this.baseURL = url
+      this.prot = 'http'
       var httpsClient = new https.Agent({
         cert: optionalTrust.cert,
         key: optionalTrust.key,
         rejectUnauthorized: false,
       });
+      this.agent = httpsClient
       this.client = axios.default.create({
         httpsAgent: httpsClient,
         baseURL: url,

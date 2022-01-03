@@ -76,126 +76,89 @@ class Client {
   /**
    * Gets all available images
    * @param {string?} os OS to filter
+   * @param {{
+   *    server: string,
+   *    protocol: "lxd" | "simplestreams"
+   * }} options
    * @returns {Promise<string[]>} Array of images "(name)/(version)"
    */
-  images(os) {
+  images(options) {
     return new Promise(async (resolve, reject) => {
-      if (os) {
-        os = capitalizeFirstLetter(os)
+      if (options.protocol == "simplestreams") {
+
         var s = await this.client.get(`https://uk.lxd.images.canonical.com/streams/v1/images.json`)
         var products = s.products;
         var productsKeys = Object.keys(s.products)
         var filterProducts = productsKeys.map((product) => {
           return products[product]
         })
+        var ppp = {}
         var a = filterProducts.map((product) => {
-          if (product.variant == "default" && product.os == os) {
-            if (product.aliases.split(',')[1] != undefined) {
-              if (product.aliases.split(',')[1].split('/')[2] == "default") {
-                var p = product.aliases.split(',')[1].split('/')
-                p.pop()
-                return p.join('/');
-              } else {
-                return product.aliases.split(',')[1];
-              }
+          var vm = false
 
-            }
-
-          }
-        })
-        resolve(a.filter(s => s != undefined))
-      } else {
-        var s = await this.client.get(`https://uk.lxd.images.canonical.com/streams/v1/images.json`)
-        var products = s.products;
-        var productsKeys = Object.keys(s.products)
-        var filterProducts = productsKeys.map((product) => {
-          return products[product]
-        })
-        var a = filterProducts.map((product) => {
           if (product.variant == "default") {
+            var k = Object.keys(product.versions)
+            for (const pro of k) {
+              var d = product.versions[pro];
+              console.log(d.items["root.squashfs"])
+              if (d.items["root.squashfs"]) {
+                vm = true
+              }
+            }
             if (product.aliases.split(',')[1] != undefined) {
               if (product.aliases.split(',')[1].split('/')[2] == "default") {
                 var p = product.aliases.split(',')[1].split('/')
                 p.pop()
-                return p.join('/');
+                if (ppp[p.join('/')]) {
+
+                } else {
+                  ppp[p.join('/')] = true
+                  return {alias: p.join('/'), supportVM: vm, os: p.join('/').split('/')[0], version: p.join('/').split('/')[1]};
+                }
+
               } else {
-                return product.aliases.split(',')[1];
+                if (ppp[product.aliases.split(',')[1]]) {
+
+                } else {
+                  ppp[product.aliases.split(',')[1]] = true
+                  return {alias: product.aliases.split(',')[1], supportVM: vm, os:product.aliases.split(',')[1].split('/')[0], version: product.aliases.split(',')[1].split('/')[1] };
+                }
+
               }
             }
 
           }
         })
-        resolve(a.filter(s => s != undefined))
+        resolve([...new Set(a.filter(s => s != undefined))])
+
+      } else if (options.protocol == "lxd") {
+
+        var serv = options.server ? options.server : ""
+        var s = await this.client.get(serv + '1.0/images?recursion=1')
+        resolve(s.metadata.map(image => {
+          return {
+            alias: image.aliases[0] ? image.aliases[0].name : "",
+            fingerprint: image.fingerprint,
+            properties: image.properties,
+            arch: image.architecture,
+            type: image.type,
+            size: image.size
+          }
+        }))
+
+
       }
 
-    })
-  }
-  /**
-   * 
-   * @param {string} os OS name i.e. "Ubuntu"
-   * @param {string} version OS version i.e. "20.04"
-   * @param {object} option
-   * @param {"armhf"|"arm64"|"i386"|"amd64"|"ppc64el"|"s390x"} option.arch Architecture to use
-   * @param {"virtual-machine" | "container"} option.type
-   * @param {"simplestreams"|"lxd"} option.connection
-   * @param {string} option.server
-   * @returns {Promise<string>} Image Fingerprint
-   */
-  fetchImage(os, option) {
-    return new Promise(async (resolve, reject) => {
-      if (!arguments[1]) var option = {}
-      else var option = arguments[1]
-      try {
-        console.log(option)
-        if (option.connection == "simplestreams") {
-          if (option.type == "virtual-machine") {
-            var s = await this.client.get(this.imageServer ? this.imageServer : `https://images.linuxcontainers.org/streams/v1/images.json`)
-            if (!option.arch) option.arch = 'amd64'
-            var sKeys = Object.keys(s.products)
-            var productF = sKeys.find((productKey) => {
-              var p = s.products[productKey]
-              return p.aliases.includes(`${os}`) && p.arch == option.arch
-            });
-            productF = s.products[productF];
-            if (!productF) reject(new Error('Product ' + `${os}` + ' not found.'))
-            var releaseKeys = Object.keys(productF.versions)
-            var release = productF.versions[releaseKeys[releaseKeys.length - 1]]
-            var fingerprint = release.items["lxd.tar.xz"]['combined_disk-kvm-img_sha256']
-          } else if (option.type == "container" || !option.type) {
-            var s = await this.client.get(this.imageServer ? this.imageServer : `https://images.linuxcontainers.org/streams/v1/images.json`)
-            if (!option.arch) option.arch = 'amd64'
-            var sKeys = Object.keys(s.products)
-            var productF = sKeys.find((productKey) => {
-              var p = s.products[productKey]
-              return p.aliases.includes(`${os}`) && p.arch == option.arch
-            });
-            productF = s.products[productF];
-            if (!productF) reject(new Error('Product ' + `${os}` + ' not found.'))
-            var releaseKeys = Object.keys(productF.versions)
-            var release = productF.versions[releaseKeys[releaseKeys.length - 1]]
-            var fingerprint = release.items["lxd.tar.xz"]['combined_squashfs_sha256']
-          }
-        } else if (option.connection == "lxd") {
-          var s = (await axios.get(option.server + "1.0/images?public&recursion=1")).data
-          var a = s.metadata.find(image => {
-            return image.aliases[0].name == os
-          });
-          var fingerprint = a.fingerprint;
-        }
-      } catch (error) {
-        reject(error)
-      }
-      resolve(fingerprint)
     })
   }
   /**
    * Creates LXD Container/VM
    * @param {string} name Instance name
    * @param {string} fingerprint Image Fingerprint, can be fetched by Client.fetchImage()
-   * @param {import('../types/types').CreateInstance.RootObject} data Additional data
+   * @param {{image: { server: string, alias: string, protocol: string}, raw:import('../types/types').CreateInstance.RootObject}} options Additional data
    * @returns {Promise<import('../types/types').CreateEmitter>} Event emitter for operation updates
    */
-  async create(name, fingerprint, data) {
+  async create(name, options) {
     return new Promise(async (resolve, reject) => {
 
       try {
@@ -203,9 +166,9 @@ class Client {
           name: name,
           source: {
             type: "image",
-            fingerprint: fingerprint,
-            "server": this.imageServer ? this.imageServer : "https://images.linuxcontainers.org",
-            "protocol": "simplestreams"
+            alias: options.image.alias,
+            "server": options.image.server ? options.image.server : "https://uk.lxd.images.canonical.com/",
+            "protocol": options.image.protocol ? options.image.protocol : "simplestreams"
           },
           ...data
         })
