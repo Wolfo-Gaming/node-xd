@@ -12,7 +12,7 @@ class RequestClient {
     return new Promise((resolve, reject) => {
       this.client.post(url, data, headers).catch(err => {
         console.log(err)
-      }).then((data) => {resolve(data)})
+      }).then((data) => { resolve(data) })
     })
   }
   delete(url) {
@@ -24,13 +24,13 @@ class RequestClient {
   put(url, data) {
     this.requests++;
     return new Promise((resolve, reject) => {
-      this.client.put(url, data).catch(reject).then(({data}) => resolve(data))
+      this.client.put(url, data).catch(reject).then(({ data }) => resolve(data))
     })
   }
   patch(url, data) {
     this.requests++;
     return new Promise((resolve, reject) => {
-      this.client.patch(url, data).catch(reject).then(({data}) => resolve(data))
+      this.client.patch(url, data).catch(reject).then(({ data }) => resolve(data))
     })
   }
   axios(args) {
@@ -41,7 +41,7 @@ class RequestClient {
       })
     } else {
       return this.client({
-        baseURL:this.baseURL,
+        baseURL: this.baseURL,
         httpsAgent: this.agent,
         ...args
       })
@@ -56,12 +56,12 @@ class RequestClient {
   ws(url) {
     this.requests++;
     return new Promise((resolve, reject) => {
-       try {
-         var wss = this.wsConnect(url)
-       } catch (error) {
-         reject(error)
-       }
-       resolve(wss)
+      try {
+        var wss = this.wsConnect(url)
+      } catch (error) {
+        reject(error)
+      }
+      resolve(wss)
     })
   }
   constructor(url, optionalTrust) {
@@ -70,7 +70,7 @@ class RequestClient {
       this.socketPath = type.pathname
       this.prot = 'unix'
       this.client = axios.default.create({
-        validateStatus: false,
+        //validateStatus: false,
         socketPath: type.pathname,
       });
       this.wsConnect = (url) => {

@@ -1,6 +1,6 @@
 function awaitOperation(client, id) {
 	return new Promise(async (resolve, reject) => {
-		 var s = setTimeout(() => {
+		var s = setTimeout(() => {
 			reject("Operation didnt finish in time.");
 		}, 150000);
 		try {

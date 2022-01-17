@@ -113,7 +113,7 @@ class Client {
 
                 } else {
                   ppp[p.join('/')] = true
-                  return {alias: p.join('/'), supportVM: vm, os: p.join('/').split('/')[0], version: p.join('/').split('/')[1]};
+                  return { alias: p.join('/'), supportVM: vm, os: p.join('/').split('/')[0], version: p.join('/').split('/')[1] };
                 }
 
               } else {
@@ -121,7 +121,7 @@ class Client {
 
                 } else {
                   ppp[product.aliases.split(',')[1]] = true
-                  return {alias: product.aliases.split(',')[1], supportVM: vm, os:product.aliases.split(',')[1].split('/')[0], version: product.aliases.split(',')[1].split('/')[1] };
+                  return { alias: product.aliases.split(',')[1], supportVM: vm, os: product.aliases.split(',')[1].split('/')[0], version: product.aliases.split(',')[1].split('/')[1] };
                 }
 
               }
@@ -166,11 +166,11 @@ class Client {
           name: name,
           source: {
             type: "image",
-            alias: options.image.alias,
-            "server": options.image.server ? options.image.server : "https://uk.lxd.images.canonical.com/",
-            "protocol": options.image.protocol ? options.image.protocol : "simplestreams"
+            alias: options.source.alias,
+            "server": options.source.server ? options.source.server : "https://uk.lxd.images.canonical.com/",
+            "protocol": options.source.protocol ? options.source.protocol : "simplestreams"
           },
-          ...data
+          ...options
         })
         var waiter = new EventEmitter()
         var events = await this.events("operation")

@@ -39,11 +39,11 @@ class Instance {
 	type() {
 		return this._metadata.meta.type;
 	}
-/**
- * 
- * @param {string} path 
- * @param {fs.WriteStream} writeStream 
- */
+	/**
+	 * 
+	 * @param {string} path 
+	 * @param {fs.WriteStream} writeStream 
+	 */
 	download(path, writeStream) {
 		return new Promise(async (resolve, reject) => {
 			if (!path) throw new Error('Path not defined')
@@ -88,7 +88,7 @@ class Instance {
 
 
 	}
-    /**
+	/**
 	 * Upload file to instance
 	 * @param {fs.ReadStream} ReadStream 
 	 * @param {string} destPath 
@@ -251,7 +251,6 @@ class Instance {
 		return new Promise(async (resolve, reject) => {
 			var state = await this.client.get("/1.0/instances/" + this._name + "/state")
 			if (state.metadata.status == "Running") {
-
 				var os = require('os')
 				if (system == true) {
 					var cpuCount = os.cpus().length
@@ -262,7 +261,6 @@ class Instance {
 				var multiplier = 100000 / cpuCount
 				var startTime = Date.now()
 				var usage1 = ((await this.client.get("/1.0/instances/" + this._name + "/state")).metadata.cpu.usage / 1000000000)
-				await sleep(1000);
 				var usage2 = ((await this.client.get("/1.0/instances/" + this._name + "/state")).metadata.cpu.usage / 1000000000)
 				var cpu_usage = ((usage2 - usage1) / (Date.now() - startTime)) * multiplier
 				if (cpu_usage > 100) {
@@ -279,10 +277,10 @@ class Instance {
 						percent: (((state.metadata.memory.usage / os.totalmem()) * 100))
 					},
 					disk: {
-						usage: state.metadata.disk.root.usage
+						usage: state.metadata.disk ? state.metadata.disk.root ? state.metadata.disk.root.usage : 0 : 0
 					}
 				})
-			 } else { 
+			} else {
 				resolve({
 					state: state.metadata.status,
 					cpu: 0,
@@ -294,7 +292,7 @@ class Instance {
 						percent: 0
 					},
 					disk: {
-						usage: state.metadata.disk.root.usage
+						usage: state.metadata.disk ? state.metadata.disk.root ? state.metadata.disk.root.usage : 0 : 0
 					}
 				})
 			}
@@ -384,7 +382,8 @@ class Instance {
 					default:
 						break;
 				}
-				if (!data.data.operation || data.data.metadata.metadata.fds["0"] || data.data.metadata.metadata.fds["control"]) return reject(new Error('Operation failed to start'))
+				//console.log(data.data)
+				//if (!data.data.operation || data.data.metadata.metadata.fds["0"] || data.data.metadata.metadata.fds["control"]) return reject(new Error('Operation failed to start'))
 				try {
 					var r = await this.client.ws(
 						data.data.operation +
