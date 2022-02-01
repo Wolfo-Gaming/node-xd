@@ -490,14 +490,60 @@ class Instance {
 						s.emit('finish', datap)
 
 				})
-
 				resolve(s)
+				await awaitOperation(this.rootClient, res.data.metadata.id)
+				s.emit("completed")
 			} catch (error) {
 				reject(error)
 			}
 		})
 
 
+	}
+	async deleteBackup(backup) {
+		return new Promise(async (resolve, reject) => {
+			try {
+				await this.client.delete("/1.0/instances/" + this._name + "/backups/" + backup);
+			} catch (error) {
+				return reject(error);
+			}
+			return resolve("Success");
+		})
+	}
+	/**
+	 * 
+	 * @param {*} backup 
+	 */
+	async downloadBackup(backup, pipe) {
+		return new Promise(async (resolve, reject) => {
+			var events = new EventEmitter();
+			try {
+				var { data, headers } = await this.client.axios({
+					url: "/1.0/instances/" + this._name + "/backups/" + backup + "/export",
+					method: 'GET',
+					responseType: 'stream'
+				});
+			} catch (error) {
+				reject(error);
+			}
+			events.emit("open");
+			var length = headers["content-length"]
+			var done = 0;
+			data.on('data', (chunk) => {
+				done += chunk.length;
+				events.emit("progress", done / length);
+			});
+			data.on('end', () => {
+				events.emit("finish");
+				console.log(events)
+				resolve(data);
+			});
+			data.on('error', (error) => {
+				events.emit("error", error);
+				reject(error);
+			});
+			data.pipe(pipe);
+		})
 	}
 	/**
 	 *
